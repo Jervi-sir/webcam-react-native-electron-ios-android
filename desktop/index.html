@@ -1,0 +1,136 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Desktop Stream Receiver</title>
+  </head>
+  <body>
+    <main class="receiver-app">
+      <section class="stage">
+        <video
+          id="remote-video"
+          autoplay
+          playsinline
+          disablepictureinpicture
+        ></video>
+
+        <header class="stage-top">
+          <div class="brand">
+            <p class="brand-eyebrow">Desktop Receiver</p>
+            <h1 class="brand-title">Live Camera Feed</h1>
+          </div>
+          <p id="connection-status" class="status-badge">Starting signaling server...</p>
+        </header>
+
+        <p id="empty-video-text" class="empty-video-text">
+          Waiting for incoming video stream...
+        </p>
+      </section>
+
+      <aside class="receiver-panel">
+        <section class="panel-section">
+          <h2>Connect Mobile</h2>
+          <p class="hint">Use one of these URLs in the mobile app signaling settings.</p>
+
+          <div class="primary-url-block">
+            <p class="field-label">Primary URL</p>
+            <div class="primary-url-row">
+              <code id="primary-url-text" class="primary-url-text">Loading...</code>
+              <button id="copy-primary-url" class="action-btn" type="button">Copy</button>
+            </div>
+          </div>
+
+          <div class="panel-actions">
+            <button id="refresh-urls" class="ghost-btn" type="button">Refresh URLs</button>
+          </div>
+
+          <ul id="ws-url-list" class="ws-url-list"></ul>
+        </section>
+
+        <section class="panel-section">
+          <h2>Stream Stats</h2>
+          <div class="stats-grid">
+            <div class="stat-row">
+              <span class="stat-label">Client</span>
+              <span id="client-address" class="stat-value">No client</span>
+            </div>
+            <div class="stat-row">
+              <span class="stat-label">Resolution</span>
+              <span id="video-resolution" class="stat-value">No stream</span>
+            </div>
+            <div class="stat-row">
+              <span class="stat-label">WebRTC</span>
+              <span id="peer-state" class="stat-value">Idle</span>
+            </div>
+          </div>
+        </section>
+
+        <section class="panel-section">
+          <h2>Virtual Camera Bridge</h2>
+          <p class="hint">
+            Send the received video to local consumers: native virtual-camera daemon or OBS plugin.
+          </p>
+
+          <label class="toggle-row" for="virtualcam-enabled">
+            <span>Bridge Enabled</span>
+            <input id="virtualcam-enabled" type="checkbox" />
+          </label>
+
+          <div class="bridge-config-grid">
+            <label class="field-stack" for="virtualcam-host">
+              <span class="field-label">Host</span>
+              <input
+                id="virtualcam-host"
+                class="text-input"
+                type="text"
+                value="127.0.0.1"
+                autocomplete="off"
+              />
+            </label>
+
+            <label class="field-stack" for="virtualcam-port">
+              <span class="field-label">Port</span>
+              <input
+                id="virtualcam-port"
+                class="text-input"
+                type="number"
+                value="19777"
+                min="1"
+                max="65535"
+              />
+            </label>
+          </div>
+
+          <label class="field-stack" for="virtualcam-encoding">
+            <span class="field-label">Encoding</span>
+            <select id="virtualcam-encoding" class="text-input">
+              <option value="jpeg">JPEG (native virtual-cam daemons)</option>
+              <option value="rgba">RAW RGBA (OBS plugin)</option>
+            </select>
+          </label>
+
+          <div class="panel-actions">
+            <button id="virtualcam-apply" class="ghost-btn" type="button">Apply Bridge Settings</button>
+          </div>
+
+          <div class="stats-grid">
+            <div class="stat-row">
+              <span class="stat-label">Bridge</span>
+              <span id="virtualcam-status" class="stat-value">disabled</span>
+            </div>
+            <div class="stat-row">
+              <span class="stat-label">Frames Sent</span>
+              <span id="virtualcam-sent" class="stat-value">0</span>
+            </div>
+            <div class="stat-row">
+              <span class="stat-label">Frames Dropped</span>
+              <span id="virtualcam-dropped" class="stat-value">0</span>
+            </div>
+          </div>
+        </section>
+      </aside>
+    </main>
+    <script type="module" src="/src/renderer.ts"></script>
+  </body>
+</html>

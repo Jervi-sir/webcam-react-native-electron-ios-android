@@ -1,0 +1,60 @@
+# macOS
+.DS_Store
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+lerna-debug.log*
+
+# Node
+**/node_modules/
+**/.npm/
+**/.pnpm-store/
+**/.yarn/
+**/.cache/
+**/*.tsbuildinfo
+
+# Expo / React Native
+mobile/.expo/
+mobile/dist/
+mobile/web-build/
+mobile/expo-env.d.ts
+
+# Native mobile outputs
+mobile/ios/
+mobile/android/
+mobile/.kotlin/
+
+# Electron / desktop outputs
+desktop/.vite/
+desktop/out/
+desktop/native/macos/ElectronVirtualCamBridgeDaemon
+desktop/native/macos/ElectronVirtualCameraHost.app/
+
+# Swift / Xcode
+.build/
+DerivedData/
+*.xcuserstate
+*.xcworkspace/xcuserdata/
+*.xcodeproj/xcuserdata/
+
+# Virtual camera generated files
+virtualcam/macos/build/
+virtualcam/windows/BridgeDaemon/build/
+/tmp/electron-virtualcam/
+
+# OBS plugin build outputs
+obs-plugin/electron_bridge_source/build/
+
+# Secrets / signing
+*.p8
+*.p12
+*.mobileprovision
+*.jks
+*.key
+*.pem
+.env
+.env.*
+!.env.example

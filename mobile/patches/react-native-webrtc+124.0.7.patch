@@ -1,0 +1,334 @@
+diff --git a/node_modules/react-native-webrtc/android/src/main/java/com/oney/WebRTCModule/WebRTCModule.java b/node_modules/react-native-webrtc/android/src/main/java/com/oney/WebRTCModule/WebRTCModule.java
+index 996648c..6ad0362 100644
+--- a/node_modules/react-native-webrtc/android/src/main/java/com/oney/WebRTCModule/WebRTCModule.java
++++ b/node_modules/react-native-webrtc/android/src/main/java/com/oney/WebRTCModule/WebRTCModule.java
+@@ -894,6 +894,24 @@ public class WebRTCModule extends ReactContextBaseJavaModule {
+         });
+     }
+ 
++    @ReactMethod
++    public void mediaStreamTrackFocusAtPoint(String id, double x, double y, Promise promise) {
++        ThreadUtils.runOnExecutor(() -> {
++            promise.reject(
++                    "E_UNSUPPORTED",
++                    "Tap-to-focus is not supported on Android by the bundled react-native-webrtc module.");
++        });
++    }
++
++    @ReactMethod
++    public void mediaStreamTrackSetZoom(String id, double zoom, Promise promise) {
++        ThreadUtils.runOnExecutor(() -> {
++            promise.reject(
++                    "E_UNSUPPORTED",
++                    "Camera zoom is not supported on Android by the bundled react-native-webrtc module.");
++        });
++    }
++
+     @ReactMethod
+     public void mediaStreamTrackSetVolume(int pcId, String id, double volume) {
+         ThreadUtils.runOnExecutor(() -> {
+diff --git a/node_modules/react-native-webrtc/ios/RCTWebRTC/CaptureController.h b/node_modules/react-native-webrtc/ios/RCTWebRTC/CaptureController.h
+index fc7a097..dd2b281 100644
+--- a/node_modules/react-native-webrtc/ios/RCTWebRTC/CaptureController.h
++++ b/node_modules/react-native-webrtc/ios/RCTWebRTC/CaptureController.h
+@@ -1,4 +1,5 @@
+ #import <Foundation/Foundation.h>
++#import <CoreGraphics/CoreGraphics.h>
+ #import "CapturerEventsDelegate.h"
+ 
+ NS_ASSUME_NONNULL_BEGIN
+@@ -12,6 +13,8 @@ NS_ASSUME_NONNULL_BEGIN
+ - (void)stopCapture;
+ - (NSDictionary *)getSettings;
+ - (void)applyConstraints:(NSDictionary *)constraints error:(NSError **)outError;
++- (void)focusAtPoint:(CGPoint)point error:(NSError **)outError;
++- (void)setZoomLevel:(CGFloat)zoomLevel error:(NSError **)outError;
+ 
+ @end
+ 
+diff --git a/node_modules/react-native-webrtc/ios/RCTWebRTC/CaptureController.m b/node_modules/react-native-webrtc/ios/RCTWebRTC/CaptureController.m
+index 86a964a..78e70b1 100644
+--- a/node_modules/react-native-webrtc/ios/RCTWebRTC/CaptureController.m
++++ b/node_modules/react-native-webrtc/ios/RCTWebRTC/CaptureController.m
+@@ -24,6 +24,20 @@ - (void)applyConstraints:(NSDictionary *)constraints error:(NSError **)outError
+                         userInfo:@{NSLocalizedDescriptionKey : @"This video track does not support applyConstraints."}];
+ }
+ 
++- (void)focusAtPoint:(CGPoint)point error:(NSError **)outError {
++    *outError = [NSError
++        errorWithDomain:@"react-native-webrtc"
++                   code:0
++               userInfo:@{NSLocalizedDescriptionKey : @"This video track does not support tap-to-focus."}];
++}
++
++- (void)setZoomLevel:(CGFloat)zoomLevel error:(NSError **)outError {
++    *outError =
++        [NSError errorWithDomain:@"react-native-webrtc"
++                            code:0
++                        userInfo:@{NSLocalizedDescriptionKey : @"This video track does not support zoom."}];
++}
++
+ @end
+ 
+ #endif
+diff --git a/node_modules/react-native-webrtc/ios/RCTWebRTC/RTCVideoViewManager.m b/node_modules/react-native-webrtc/ios/RCTWebRTC/RTCVideoViewManager.m
+index e64005d..03cddde 100644
+--- a/node_modules/react-native-webrtc/ios/RCTWebRTC/RTCVideoViewManager.m
++++ b/node_modules/react-native-webrtc/ios/RCTWebRTC/RTCVideoViewManager.m
+@@ -3,6 +3,7 @@
+ 
+ #import <React/RCTLog.h>
+ #import <React/RCTUIManager.h>
++#import <React/RCTUIManagerUtils.h>
+ #import <React/RCTView.h>
+ 
+ #import <WebRTC/RTCMediaStream.h>
+@@ -380,28 +381,32 @@ - (dispatch_queue_t)methodQueue {
+ RCT_EXPORT_METHOD(startIOSPIP : (nonnull NSNumber *)reactTag) {
+     if (@available(iOS 15.0, *)) {
+         RCTUIManager *uiManager = [self.bridge moduleForClass:[RCTUIManager class]];
+-        [uiManager addUIBlock:^(RCTUIManager *uiManager, NSDictionary<NSNumber *, UIView *> *viewRegistry) {
+-            UIView *view = viewRegistry[reactTag];
+-            if (!view || ![view isKindOfClass:[RTCVideoView class]]) {
+-                RCTLogError(@"Cannot find RTCVideoView with tag #%@", reactTag);
+-                return;
+-            }
+-            [(RTCVideoView *)view startPIP];
+-        }];
++        RCTExecuteOnUIManagerQueue(^{
++            [uiManager addUIBlock:^(RCTUIManager *uiManager, NSDictionary<NSNumber *, UIView *> *viewRegistry) {
++                UIView *view = viewRegistry[reactTag];
++                if (!view || ![view isKindOfClass:[RTCVideoView class]]) {
++                    RCTLogError(@"Cannot find RTCVideoView with tag #%@", reactTag);
++                    return;
++                }
++                [(RTCVideoView *)view startPIP];
++            }];
++        });
+     }
+ }
+ 
+ RCT_EXPORT_METHOD(stopIOSPIP : (nonnull NSNumber *)reactTag) {
+     if (@available(iOS 15.0, *)) {
+         RCTUIManager *uiManager = [self.bridge moduleForClass:[RCTUIManager class]];
+-        [uiManager addUIBlock:^(RCTUIManager *uiManager, NSDictionary<NSNumber *, UIView *> *viewRegistry) {
+-            UIView *view = viewRegistry[reactTag];
+-            if (!view || ![view isKindOfClass:[RTCVideoView class]]) {
+-                RCTLogError(@"Cannot find RTCVideoView with tag #%@", reactTag);
+-                return;
+-            }
+-            [(RTCVideoView *)view stopPIP];
+-        }];
++        RCTExecuteOnUIManagerQueue(^{
++            [uiManager addUIBlock:^(RCTUIManager *uiManager, NSDictionary<NSNumber *, UIView *> *viewRegistry) {
++                UIView *view = viewRegistry[reactTag];
++                if (!view || ![view isKindOfClass:[RTCVideoView class]]) {
++                    RCTLogError(@"Cannot find RTCVideoView with tag #%@", reactTag);
++                    return;
++                }
++                [(RTCVideoView *)view stopPIP];
++            }];
++        });
+     }
+ }
+ + (BOOL)requiresMainQueueSetup {
+diff --git a/node_modules/react-native-webrtc/ios/RCTWebRTC/VideoCaptureController.h b/node_modules/react-native-webrtc/ios/RCTWebRTC/VideoCaptureController.h
+index 7df95c9..fca596c 100644
+--- a/node_modules/react-native-webrtc/ios/RCTWebRTC/VideoCaptureController.h
++++ b/node_modules/react-native-webrtc/ios/RCTWebRTC/VideoCaptureController.h
+@@ -16,6 +16,8 @@
+ - (void)stopCapture;
+ - (void)switchCamera;
+ - (void)applyConstraints:(NSDictionary *)constraints error:(NSError **)outError;
++- (void)focusAtPoint:(CGPoint)point error:(NSError **)outError;
++- (void)setZoomLevel:(CGFloat)zoomLevel error:(NSError **)outError;
+ 
+ @end
+ #endif
+diff --git a/node_modules/react-native-webrtc/ios/RCTWebRTC/VideoCaptureController.m b/node_modules/react-native-webrtc/ios/RCTWebRTC/VideoCaptureController.m
+index e7f52a1..d771cfa 100644
+--- a/node_modules/react-native-webrtc/ios/RCTWebRTC/VideoCaptureController.m
++++ b/node_modules/react-native-webrtc/ios/RCTWebRTC/VideoCaptureController.m
+@@ -19,6 +19,10 @@ @interface VideoCaptureController ()
+ 
+ @implementation VideoCaptureController
+ 
++static CGFloat clampNormalizedValue(CGFloat value) {
++    return MIN(MAX(value, 0.0), 1.0);
++}
++
+ - (instancetype)initWithCapturer:(RTCCameraVideoCapturer *)capturer andConstraints:(NSDictionary *)constraints {
+     self = [super init];
+     if (self) {
+@@ -185,6 +189,77 @@ - (void)applyConstraints:(NSDictionary *)constraints error:(NSError **)outError
+     }
+ }
+ 
++- (void)focusAtPoint:(CGPoint)point error:(NSError **)outError {
++    if (!self.device) {
++        if (outError) {
++            *outError = [NSError
++                errorWithDomain:@"react-native-webrtc"
++                           code:0
++                       userInfo:@{NSLocalizedDescriptionKey : @"Camera device is not ready for focus."}];
++        }
++        return;
++    }
++
++    NSError *lockError = nil;
++    if (![self.device lockForConfiguration:&lockError]) {
++        if (outError) {
++            *outError = lockError;
++        }
++        return;
++    }
++
++    CGPoint normalizedPoint =
++        CGPointMake(clampNormalizedValue(point.x), clampNormalizedValue(point.y));
++
++    if (self.device.isFocusPointOfInterestSupported) {
++        self.device.focusPointOfInterest = normalizedPoint;
++    }
++
++    if ([self.device isFocusModeSupported:AVCaptureFocusModeAutoFocus]) {
++        self.device.focusMode = AVCaptureFocusModeAutoFocus;
++    } else if ([self.device isFocusModeSupported:AVCaptureFocusModeContinuousAutoFocus]) {
++        self.device.focusMode = AVCaptureFocusModeContinuousAutoFocus;
++    }
++
++    if (self.device.isExposurePointOfInterestSupported) {
++        self.device.exposurePointOfInterest = normalizedPoint;
++    }
++
++    if ([self.device isExposureModeSupported:AVCaptureExposureModeContinuousAutoExposure]) {
++        self.device.exposureMode = AVCaptureExposureModeContinuousAutoExposure;
++    }
++
++    [self.device unlockForConfiguration];
++}
++
++- (void)setZoomLevel:(CGFloat)zoomLevel error:(NSError **)outError {
++    if (!self.device) {
++        if (outError) {
++            *outError = [NSError
++                errorWithDomain:@"react-native-webrtc"
++                           code:0
++                       userInfo:@{NSLocalizedDescriptionKey : @"Camera device is not ready for zoom."}];
++        }
++        return;
++    }
++
++    NSError *lockError = nil;
++    if (![self.device lockForConfiguration:&lockError]) {
++        if (outError) {
++            *outError = lockError;
++        }
++        return;
++    }
++
++    CGFloat minZoom = self.device.minAvailableVideoZoomFactor;
++    CGFloat maxZoom = self.device.maxAvailableVideoZoomFactor;
++    CGFloat requested = MAX(zoomLevel, 1.0);
++    CGFloat clampedZoom = MIN(MAX(requested, minZoom), maxZoom);
++    self.device.videoZoomFactor = clampedZoom;
++
++    [self.device unlockForConfiguration];
++}
++
+ - (NSDictionary *)getSettings {
+     AVCaptureDeviceFormat *format = self.selectedFormat;
+     CMVideoDimensions dimensions = CMVideoFormatDescriptionGetDimensions(format.formatDescription);
+diff --git a/node_modules/react-native-webrtc/ios/RCTWebRTC/WebRTCModule+RTCMediaStream.m b/node_modules/react-native-webrtc/ios/RCTWebRTC/WebRTCModule+RTCMediaStream.m
+index 62179a8..42b07e6 100644
+--- a/node_modules/react-native-webrtc/ios/RCTWebRTC/WebRTCModule+RTCMediaStream.m
++++ b/node_modules/react-native-webrtc/ios/RCTWebRTC/WebRTCModule+RTCMediaStream.m
+@@ -455,6 +455,77 @@ - (RTCVideoTrack *)createScreenCaptureVideoTrack {
+ #endif
+ }
+ 
++RCT_EXPORT_METHOD(mediaStreamTrackFocusAtPoint : (nonnull NSString *)trackID x : (nonnull NSNumber *)x y
++                      : (nonnull NSNumber *)y resolver : (RCTPromiseResolveBlock)resolve rejecter
++                      : (RCTPromiseRejectBlock)reject) {
++#if TARGET_OS_TV
++    reject(@"unsupported_platform", @"tvOS is not supported", nil);
++    return;
++#else
++    RTCMediaStreamTrack *track = self.localTracks[trackID];
++    if (track == nil) {
++        reject(@"E_INVALID", @"Could not get track", nil);
++        return;
++    }
++
++    if (![track.kind isEqualToString:@"video"]) {
++        reject(@"E_INVALID", @"Can't focus on audio tracks", nil);
++        return;
++    }
++
++    RTCVideoTrack *videoTrack = (RTCVideoTrack *)track;
++    if (![videoTrack.captureController isKindOfClass:[VideoCaptureController class]]) {
++        reject(@"E_INVALID", @"Video track does not support tap-to-focus", nil);
++        return;
++    }
++
++    VideoCaptureController *vcc = (VideoCaptureController *)videoTrack.captureController;
++    NSError *error = nil;
++    [vcc focusAtPoint:CGPointMake([x floatValue], [y floatValue]) error:&error];
++    if (error) {
++        reject(@"E_INVALID", error.localizedDescription, error);
++        return;
++    }
++
++    resolve(nil);
++#endif
++}
++
++RCT_EXPORT_METHOD(mediaStreamTrackSetZoom : (nonnull NSString *)trackID zoom : (nonnull NSNumber *)zoom resolver
++                      : (RCTPromiseResolveBlock)resolve rejecter : (RCTPromiseRejectBlock)reject) {
++#if TARGET_OS_TV
++    reject(@"unsupported_platform", @"tvOS is not supported", nil);
++    return;
++#else
++    RTCMediaStreamTrack *track = self.localTracks[trackID];
++    if (track == nil) {
++        reject(@"E_INVALID", @"Could not get track", nil);
++        return;
++    }
++
++    if (![track.kind isEqualToString:@"video"]) {
++        reject(@"E_INVALID", @"Can't set zoom on audio tracks", nil);
++        return;
++    }
++
++    RTCVideoTrack *videoTrack = (RTCVideoTrack *)track;
++    if (![videoTrack.captureController isKindOfClass:[VideoCaptureController class]]) {
++        reject(@"E_INVALID", @"Video track does not support zoom", nil);
++        return;
++    }
++
++    VideoCaptureController *vcc = (VideoCaptureController *)videoTrack.captureController;
++    NSError *error = nil;
++    [vcc setZoomLevel:[zoom floatValue] error:&error];
++    if (error) {
++        reject(@"E_INVALID", error.localizedDescription, error);
++        return;
++    }
++
++    resolve(nil);
++#endif
++}
++
+ RCT_EXPORT_METHOD(mediaStreamTrackSetVolume : (nonnull NSNumber *)pcId : (nonnull NSString *)trackID : (double)volume) {
+     RTCMediaStreamTrack *track = [self trackForId:trackID pcId:pcId];
+     if (track && [track.kind isEqualToString:@"audio"]) {
+diff --git a/node_modules/react-native-webrtc/ios/RCTWebRTC/WebRTCModuleOptions.m b/node_modules/react-native-webrtc/ios/RCTWebRTC/WebRTCModuleOptions.m
+index ba108da..71a8a56 100644
+--- a/node_modules/react-native-webrtc/ios/RCTWebRTC/WebRTCModuleOptions.m
++++ b/node_modules/react-native-webrtc/ios/RCTWebRTC/WebRTCModuleOptions.m
+@@ -18,6 +18,7 @@ + (instancetype)sharedInstance {
+ - (instancetype)init {
+     if (self = [super init]) {
+         self.audioDevice = nil;
++        self.enableMultitaskingCameraAccess = YES;
+         self.fieldTrials = nil;
+         self.videoEncoderFactory = nil;
+         self.videoDecoderFactory = nil;
